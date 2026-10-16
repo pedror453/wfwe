@@ -19,6 +19,7 @@ public static class GwProbe
     static object ib;
     static string user = "", pwd = "", uc = "";
     static string scratchIb = null, outCsv = null;
+    const string DefaultCats = "Организации,Контрагенты,Автомобили,Сотрудники,Номенклатура,Автоработы,ВидыРемонта,Цеха,Нормочасы,Проекты,ДоговорыВзаиморасчетов,Валюты,ЕдиницыИзмерения,СтавкиНДС";
 
     static object GP(object o, string n) { return o.GetType().InvokeMember(n, BindingFlags.GetProperty, null, o, null); }
     static void SP(object o, string n, object v) { o.GetType().InvokeMember(n, BindingFlags.SetProperty, null, o, new object[] { v }); }
@@ -207,7 +208,7 @@ public static class GwProbe
         {
             if (mode == "compile") Compile();
             else if (mode == "catlist") CatList();
-            else if (mode == "catstruct") CatStruct(args.Length > 1 ? args[1] : "Организации");
+            else if (mode == "catstruct") CatStruct(args.Length > 1 && args[1] != "default" ? args[1] : DefaultCats);
             else Facts();
         }
         catch (Exception e) { Console.WriteLine("FATAL: " + Err(e)); return 1; }
