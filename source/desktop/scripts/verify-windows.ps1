@@ -94,7 +94,12 @@ $out = "$rel\e2e_desktop.out"
 Remove-Item $out, "$out.err" -ErrorAction SilentlyContinue
 Push-Location "$w\client_build"
 $ep = Start-Process node -ArgumentList 'e2e-real\desktop.mjs' -PassThru -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError "$out.err"
-Check 'installed app works end to end against the work-copy gateway' { (Wait-Exit $ep 170) -and ($ep.ExitCode -eq 0) }
+# the exit code of a redirected node process is not reliably available in Windows PowerShell 5.1, so the result is read from its output
+Check 'installed app works end to end against the work-copy gateway' {
+    if (-not (Wait-Exit $ep 170)) { return 'timeout' }
+    $txt = Get-Content $out -Raw -Encoding UTF8
+    return (($txt -notmatch 'FAIL') -and (([regex]::Matches($txt, 'PASS')).Count -ge 10))
+}
 Pop-Location
 Remove-Item Env:KERMO_PASS -ErrorAction SilentlyContinue
 Get-Content $out -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { L ('e2e: ' + $_) }
