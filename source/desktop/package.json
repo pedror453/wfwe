@@ -1,0 +1,20 @@
+{
+  "name": "kermo-desktop",
+  "productName": "Kermo",
+  "version": "0.1.0",
+  "description": "Кермо — ERP автодилера",
+  "author": "Kermo",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "prepare-client": "node scripts/prepare-client.mjs",
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "node scripts/patch-nsis-messages.mjs && electron-builder --win nsis --x64 --publish never",
+    "dist:dir": "node scripts/patch-nsis-messages.mjs && electron-builder --win dir --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.15.3"
+  }
+}

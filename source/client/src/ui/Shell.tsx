@@ -37,7 +37,7 @@ function ConnectionChip() {
   }, [api]);
   if (health === undefined) return <span className="chip">Перевірка зв’язку…</span>;
   if (!health) return <span className="chip chip-bad" data-testid="conn">Немає зв’язку з сервером</span>;
-  return <span className="chip chip-ok" data-testid="conn" title={`Платформа ${health.platform}`}>1С: {health.infobase} · {health.platform}</span>;
+  return <span className="chip chip-ok" data-testid="conn" title={`Платформа ${health.platform}; шлюз ${health.version}`}>Сервер: {health.infobase}</span>;
 }
 
 export function Shell({ route, navigate, children }: { route: string; navigate: (to: string) => void; children: ReactNode }) {

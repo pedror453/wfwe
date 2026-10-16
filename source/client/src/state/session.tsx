@@ -1,12 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createApi, type Api } from '../api/client';
 import type { Capabilities } from '../api/types';
+import { host } from '../host';
+import { defaultServer, normalizeServerInput } from '../server-url';
 
-// Коли клієнт відкрито зі шлюзу (той самий хост), звертаємося до нього ж; у розробці й в оболонці Electron — до локального шлюзу.
-export const DEFAULT_SERVER = (() => {
-  const { protocol, origin, port } = window.location;
-  return protocol.startsWith('http') && port !== '5173' && port !== '4173' ? origin : 'http://127.0.0.1:8480';
-})();
+// Адреса за замовчуванням: з налаштувань інсталятора (Windows-програма), інакше сервер, що віддав клієнта.
+export const DEFAULT_SERVER = defaultServer(window.location, host);
 
 interface SessionValue {
   baseUrl: string;
@@ -43,8 +42,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const api = useMemo(() => createApi(() => ({ ...live.current, onUnauthorized: clear })), [clear]);
 
   const setBaseUrl = useCallback((v: string) => {
-    localStorage.setItem('kermo.server', v);
-    setBase(v);
+    const normalized = normalizeServerInput(v) || DEFAULT_SERVER;
+    localStorage.setItem('kermo.server', normalized);
+    live.current = { ...live.current, baseUrl: normalized };
+    setBase(normalized);
   }, []);
 
   useEffect(() => {

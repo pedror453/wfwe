@@ -45,7 +45,7 @@ for (let i = 0; i < 240; i++) {
 }
 
 const tokens = new Set();
-const NOTE = 'Недоступно: запис у 1С 8.1 ще не підключено (див. «Про систему»).';
+const NOTE = 'Недоступно: запис документів ще не підключено (див. «Про систему»).';
 const bearer = (req) => (req.headers.authorization || '').replace(/^Bearer /, '');
 const send = (res, status, body, type = 'application/json') => {
   res.writeHead(status, { 'Content-Type': type + '; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS' });

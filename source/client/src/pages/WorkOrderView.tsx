@@ -15,7 +15,7 @@ export function WorkOrderView({ id, onBack }: { id: string; onBack: () => void }
   if (loading || !o) return <div className="page" aria-busy="true"><div className="skeleton tall" /></div>;
 
   const caps = capabilities?.workOrders;
-  const note = (k: string) => capabilities?.notes?.[k] ?? 'Недоступно: запис у 1С 8.1 ще не підключено (див. «Про систему»).';
+  const note = (k: string) => capabilities?.notes?.[k] ?? 'Недоступно: запис документів ще не підключено (див. «Про систему»).';
   const actions: { key: string; label: string; icon: IconName; enabled: boolean }[] = [
     { key: 'update', label: 'Зберегти', icon: 'save', enabled: !!caps?.update },
     { key: 'post', label: 'Провести', icon: 'check', enabled: !!caps?.post },

@@ -38,6 +38,10 @@ test('вхід, огляд, список, картка й теми', async ({ pa
   await page.getByRole('link', { name: /Огляд/ }).click();
   await page.screenshot({ path: shot('06-overview-dark') });
 
+  await page.getByRole('link', { name: /Про систему/ }).click();
+  await expect(page.getByText('Ліцензії та залежності')).toBeVisible();
+  await page.screenshot({ path: shot('07-about-dark') });
+
   await page.getByRole('button', { name: 'Вийти' }).click();
   await expect(page.getByRole('heading', { name: 'Кермо' })).toBeVisible();
 });

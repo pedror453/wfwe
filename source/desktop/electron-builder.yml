@@ -1,0 +1,51 @@
+# Збірка інсталятора «Кермо» (Windows x64, NSIS). Команда: npm run dist (див. README.md).
+appId: ua.kermo.erp
+productName: Kermo
+copyright: © Кермо
+directories:
+  output: dist
+  buildResources: assets
+files:
+  - main.js
+  - preload.js
+  - config.js
+  - package.json
+  - client/**/*
+asar: true
+compression: normal
+npmRebuild: false
+electronLanguages:
+  - uk
+  - en-US
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.ico
+  requestedExecutionLevel: asInvoker
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Кермо
+  uninstallDisplayName: Кермо — ERP автодилера
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  differentialPackage: false
+  warningsAsErrors: false
+  multiLanguageInstaller: true
+  installerLanguages:
+    - uk_UA
+  displayLanguageSelector: false
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerHeader: assets/installerHeader.bmp
+  installerSidebar: assets/installerSidebar.bmp
+  uninstallerSidebar: assets/uninstallerSidebar.bmp
+  license: assets/license.rtf
+  include: installer.nsh
+  artifactName: Kermo-Setup-${version}.${ext}

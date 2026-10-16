@@ -96,7 +96,7 @@ namespace Kermo.Gateway
 
         static Reply Problem(int status, string detail)
         {
-            string title = status == 401 ? "Не авторизовано" : status == 404 ? "Не знайдено" : status == 422 ? "Некоректні дані" : status == 429 ? "Забагато запитів" : status == 502 ? "Помилка 1С" : status == 503 ? "Сервіс недоступний" : status == 504 ? "Час очікування вичерпано" : "Помилка";
+            string title = status == 401 ? "Не авторизовано" : status == 404 ? "Не знайдено" : status == 422 ? "Некоректні дані" : status == 429 ? "Забагато запитів" : status == 502 ? "Помилка сервера обліку" : status == 503 ? "Сервіс недоступний" : status == 504 ? "Час очікування вичерпано" : "Помилка";
             return new Reply { Status = status, Type = "application/problem+json", Body = new Dictionary<string, object> { { "title", title }, { "status", status }, { "detail", detail } } };
         }
 
@@ -186,7 +186,7 @@ namespace Kermo.Gateway
                 return Ok(s.Run(db => Repo.Lookup(db, kind, q, limit), cfg.CallTimeoutSeconds * 1000));
             }
             if (path.StartsWith("/work-orders") && (m == "POST" || m == "PUT"))
-                throw new ApiException(501, "Запис і проведення в 1С 8.1 ще не підключено.");
+                throw new ApiException(501, "Запис і проведення ще не підключено.");
             throw new ApiException(404, "Невідомий шлях.");
         }
 
@@ -200,7 +200,7 @@ namespace Kermo.Gateway
 
         static Dictionary<string, object> Capabilities()
         {
-            const string note = "Недоступно: запис у 1С 8.1 ще не підключено (див. «Про систему»).";
+            const string note = "Недоступно: запис документів ще не підключено (див. «Про систему»).";
             return new Dictionary<string, object>
             {
                 { "workOrders", new Dictionary<string, object> { { "list", true }, { "read", true }, { "create", false }, { "update", false }, { "post", false }, { "unpost", false }, { "print", false } } },
@@ -232,7 +232,7 @@ namespace Kermo.Gateway
                     guard.Fail(ip);
                     throw new ApiException(401, "Неправильне ім’я користувача або пароль.");
                 }
-                throw new ApiException(503, "Не вдалося підключитися до 1С: " + (msg.Length > 300 ? msg.Substring(0, 300) : msg));
+                throw new ApiException(503, "Не вдалося підключитися до сервера обліку: " + (msg.Length > 300 ? msg.Substring(0, 300) : msg));
             }
         }
 

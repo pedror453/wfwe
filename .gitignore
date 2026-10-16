@@ -18,3 +18,5 @@ agent_work/
 *.1CD
 *.exe
 !installer/**/*.exe
+source/desktop/client/
+source/desktop/dist/

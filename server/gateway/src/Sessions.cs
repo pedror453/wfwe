@@ -40,7 +40,7 @@ namespace Kermo.Gateway
             s.thread.SetApartmentState(ApartmentState.STA);
             s.thread.IsBackground = true;
             s.thread.Start();
-            if (!ready.Wait(cfg.CallTimeoutSeconds * 1000)) { s.Close(); throw new ApiException(504, "1С не відповіла вчасно."); }
+            if (!ready.Wait(cfg.CallTimeoutSeconds * 1000)) { s.Close(); throw new ApiException(504, "Сервер обліку не відповів вчасно."); }
             if (err != null) { s.Close(); throw new Exception(Late.Err(err)); }
             var buf = new byte[24];
             using (var rng = RandomNumberGenerator.Create()) rng.GetBytes(buf);
@@ -65,14 +65,14 @@ namespace Kermo.Gateway
                 try { result = f(db); } catch (Exception e) { ex = e; }
                 done.Set();
             });
-            if (!done.Wait(timeoutMs)) throw new ApiException(504, "1С не відповіла вчасно.");
+            if (!done.Wait(timeoutMs)) throw new ApiException(504, "Сервер обліку не відповів вчасно.");
             LastUsed = DateTime.UtcNow;
             if (ex != null)
             {
                 var api = ex as ApiException;
                 if (api != null) throw api;
                 string msg = Late.Err(ex);
-                throw new ApiException(502, "Помилка 1С: " + (msg.Length > 400 ? msg.Substring(0, 400) : msg));
+                throw new ApiException(502, "Помилка сервера обліку: " + (msg.Length > 400 ? msg.Substring(0, 400) : msg));
             }
             return result;
         }
