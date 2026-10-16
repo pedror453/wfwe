@@ -9,14 +9,13 @@ $mk = Get-ChildItem "$env:LOCALAPPDATA\electron-builder\Cache" -Recurse -Filter 
 if (-not $mk) { 'makensis not found'; exit 1 }
 $env:NSISDIR = Split-Path $mk.FullName
 if (-not (Test-Path "$env:NSISDIR\Stubs")) { $env:NSISDIR = Split-Path $env:NSISDIR }
-New-Item -ItemType Directory -Force "$tmp\test\nsis" | Out-Null
 Copy-Item "$src\installer.nsh" "$tmp\installer.nsh"
-Copy-Item "$src\test\nsis\parse-test.nsi" "$tmp\test\nsis\parse-test.nsi"
-Push-Location "$tmp\test\nsis"
-$out = & $mk.FullName /V2 parse-test.nsi 2>&1
-Pop-Location
+# the repo copy includes ../../installer.nsh (relative); here the include path is made absolute so the result does not depend on the working directory
+$nsi = (Get-Content "$src\test\nsis\parse-test.nsi" -Raw -Encoding UTF8).Replace('../../installer.nsh', "$tmp\installer.nsh")
+[IO.File]::WriteAllText("$tmp\parse-test.nsi", $nsi, (New-Object Text.UTF8Encoding($true)))
+$out = & $mk.FullName /V2 "$tmp\parse-test.nsi" 2>&1
 $out | Select-Object -Last 6 | ForEach-Object { 'makensis: ' + $_ }
-$exe = "$tmp\test\nsis\parse-test.exe"
+$exe = "$tmp\parse-test.exe"
 if (-not (Test-Path $exe)) { 'COMPILE FAILED'; exit 1 }
 $env:ProgramData = "$tmp\pd"
 $cases = @(
