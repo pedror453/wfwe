@@ -1,0 +1,11 @@
+{
+  "listen": "http://127.0.0.1:8480/",
+  "srvr": "LR",
+  "ref": "Copymax",
+  "permissionCode": "",
+  "webRoot": "",
+  "maxSessions": 3,
+  "idleMinutes": 15,
+  "callTimeoutSeconds": 90,
+  "allowedInfobases": ["Copymax"]
+}
