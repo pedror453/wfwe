@@ -60,6 +60,7 @@ namespace Kermo.Gateway
         {
             var sw = Stopwatch.StartNew();
             int status = 500;
+            string err = "";
             string path = ctx.Request.Url.AbsolutePath;
             try
             {
@@ -75,17 +76,19 @@ namespace Kermo.Gateway
             catch (ApiException e)
             {
                 status = e.Status;
+                if (e.Status >= 500) err = " :: " + e.Message;
                 Write(ctx.Response, Problem(e.Status, e.Message));
             }
             catch (Exception e)
             {
                 status = 500;
+                err = " :: " + Late.Err(e);
                 Write(ctx.Response, Problem(500, "Внутрішня помилка шлюзу: " + Late.Err(e)));
             }
             finally
             {
                 try { ctx.Response.Close(); } catch (Exception) { }
-                Program.Log(ctx.Request.HttpMethod + " " + path + " -> " + status + " " + sw.ElapsedMilliseconds + " мс");
+                Program.Log(ctx.Request.HttpMethod + " " + path + " -> " + status + " " + sw.ElapsedMilliseconds + " мс" + err);
             }
         }
 
@@ -116,10 +119,33 @@ namespace Kermo.Gateway
             return s;
         }
 
-        static int IntParam(HttpListenerRequest req, string name, int def)
+        // HttpListener.QueryString розкодовує кирилицю в системній кодовій сторінці, тому рядок запиту розбираємо як UTF-8.
+        static Dictionary<string, string> QueryParams(HttpListenerRequest req)
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            string raw = req.RawUrl ?? "";
+            int i = raw.IndexOf('?');
+            if (i < 0) return d;
+            foreach (string part in raw.Substring(i + 1).Split(new char[] { '&' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int eq = part.IndexOf('=');
+                string k = eq < 0 ? part : part.Substring(0, eq);
+                string v = eq < 0 ? "" : part.Substring(eq + 1);
+                d[Uri.UnescapeDataString(k.Replace('+', ' '))] = Uri.UnescapeDataString(v.Replace('+', ' '));
+            }
+            return d;
+        }
+
+        static string P(Dictionary<string, string> d, string key)
+        {
+            string v;
+            return d.TryGetValue(key, out v) ? v : "";
+        }
+
+        static int IntParam(Dictionary<string, string> d, string name, int def)
         {
             int v;
-            return int.TryParse(req.QueryString[name], out v) ? v : def;
+            return int.TryParse(P(d, name), out v) ? v : def;
         }
 
         Reply Route(HttpListenerRequest req, string path)
@@ -140,8 +166,9 @@ namespace Kermo.Gateway
             if (m == "GET" && path == "/work-orders/summary") return Ok(Summary(s));
             if (m == "GET" && path == "/work-orders")
             {
-                string q = (req.QueryString["q"] ?? "").Trim(), st = req.QueryString["state"] ?? "";
-                int page = IntParam(req, "page", 1), size = IntParam(req, "pageSize", 25);
+                var qp = QueryParams(req);
+                string q = P(qp, "q").Trim(), st = P(qp, "state");
+                int page = IntParam(qp, "page", 1), size = IntParam(qp, "pageSize", 25);
                 return Ok(s.Run(db => Repo.ListWorkOrders(db, q, st, page, size), cfg.CallTimeoutSeconds * 1000));
             }
             Match mm = Regex.Match(path, "^/work-orders/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$");
@@ -153,8 +180,9 @@ namespace Kermo.Gateway
             Match lk = Regex.Match(path, "^/lookups/([a-zA-Z]+)$");
             if (m == "GET" && lk.Success)
             {
-                string kind = lk.Groups[1].Value, q = (req.QueryString["q"] ?? "").Trim();
-                int limit = IntParam(req, "limit", 30);
+                var qp = QueryParams(req);
+                string kind = lk.Groups[1].Value, q = P(qp, "q").Trim();
+                int limit = IntParam(qp, "limit", 30);
                 return Ok(s.Run(db => Repo.Lookup(db, kind, q, limit), cfg.CallTimeoutSeconds * 1000));
             }
             if (path.StartsWith("/work-orders") && (m == "POST" || m == "PUT"))

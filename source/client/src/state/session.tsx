@@ -2,7 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createApi, type Api } from '../api/client';
 import type { Capabilities } from '../api/types';
 
-export const DEFAULT_SERVER = 'http://127.0.0.1:8480';
+// Коли клієнт відкрито зі шлюзу (той самий хост), звертаємося до нього ж; у розробці й в оболонці Electron — до локального шлюзу.
+export const DEFAULT_SERVER = (() => {
+  const { protocol, origin, port } = window.location;
+  return protocol.startsWith('http') && port !== '5173' && port !== '4173' ? origin : 'http://127.0.0.1:8480';
+})();
 
 interface SessionValue {
   baseUrl: string;

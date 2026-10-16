@@ -8,7 +8,11 @@ $script:ok = 0; $script:fail = 0; $script:token = $null
 function Check([string]$name, [scriptblock]$test) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     try { $r = & $test; if ($r -eq $true) { $script:ok++; '{0,-62} PASS  {1} ms' -f $name, $sw.ElapsedMilliseconds } else { $script:fail++; '{0,-62} FAIL  {1}' -f $name, $r } }
-    catch { $script:fail++; '{0,-62} FAIL  {1}' -f $name, $_.Exception.Message }
+    catch {
+        $msg = $_.Exception.Message
+        if ($_.Exception.Response) { try { $sr = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream(), [Text.Encoding]::UTF8); $msg += ' :: ' + $sr.ReadToEnd() } catch { } }
+        $script:fail++; '{0,-62} FAIL  {1}' -f $name, $msg
+    }
 }
 function Call([string]$method, [string]$path, $body = $null, [bool]$auth = $true) {
     $h = @{}
