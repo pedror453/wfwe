@@ -18,6 +18,7 @@ public static class GwProbe
     const string Root = @"C:\Base_1C\MCP_LR_Copy_20261016";
     static object ib;
     static string user = "", pwd = "", uc = "";
+    static string scratchIb = null, outCsv = null;
 
     static object GP(object o, string n) { return o.GetType().InvokeMember(n, BindingFlags.GetProperty, null, o, null); }
     static void SP(object o, string n, object v) { o.GetType().InvokeMember(n, BindingFlags.SetProperty, null, o, new object[] { v }); }
@@ -47,6 +48,14 @@ public static class GwProbe
     static long Connect()
     {
         var sw = Stopwatch.StartNew();
+        if (scratchIb != null)
+        {
+            string allowed = Path.Combine(Root, @"agent_work\scratch83");
+            if (!Path.GetFullPath(scratchIb).StartsWith(allowed, StringComparison.OrdinalIgnoreCase)) throw new Exception("Only scratch infobases are allowed.");
+            object c0 = Activator.CreateInstance(Type.GetTypeFromProgID("V81.COMConnector"));
+            ib = CM(c0, "Connect", "File=\"" + scratchIb + "\"");
+            return sw.ElapsedMilliseconds;
+        }
         user = File.ReadAllText(Path.Combine(Root, @"agent_work\secrets\copymax.user"), Encoding.UTF8).Trim();
         string hex = File.ReadAllText(Path.Combine(Root, @"agent_work\secrets\copymax.pass.dpapi"), Encoding.ASCII).Trim();
         byte[] blob = new byte[hex.Length / 2];
@@ -128,7 +137,7 @@ public static class GwProbe
     {
         long ms = Connect();
         Console.WriteLine("connected in " + ms + " ms; creating objects in memory only");
-        string csv = Path.Combine(Root, @"agent_work\audit\compile_matrix.csv");
+        string csv = outCsv != null ? outCsv : Path.Combine(Root, @"agent_work\audit\compile_matrix.csv");
         File.WriteAllText(csv, "kind;name;time;result\r\n", new UTF8Encoding(true));
         object md = GP(ib, "Метаданные");
         string[][] specs = new string[][] { new string[] { "Документы", "СоздатьДокумент" }, new string[] { "Справочники", "СоздатьЭлемент" } };
@@ -185,6 +194,14 @@ public static class GwProbe
     public static int Main(string[] args)
     {
         Console.OutputEncoding = new UTF8Encoding(false);
+        var list = new List<string>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--ib" && i + 1 < args.Length) scratchIb = args[++i];
+            else if (args[i] == "--out" && i + 1 < args.Length) outCsv = args[++i];
+            else list.Add(args[i]);
+        }
+        args = list.ToArray();
         string mode = args.Length > 0 ? args[0] : "facts";
         try
         {
