@@ -12,7 +12,9 @@ if (-not (Test-Path "$env:NSISDIR\Stubs")) { $env:NSISDIR = Split-Path $env:NSIS
 New-Item -ItemType Directory -Force "$tmp\test\nsis" | Out-Null
 Copy-Item "$src\installer.nsh" "$tmp\installer.nsh"
 Copy-Item "$src\test\nsis\parse-test.nsi" "$tmp\test\nsis\parse-test.nsi"
-$out = & $mk.FullName /V2 "$tmp\test\nsis\parse-test.nsi" 2>&1
+Push-Location "$tmp\test\nsis"
+$out = & $mk.FullName /V2 parse-test.nsi 2>&1
+Pop-Location
 $out | Select-Object -Last 6 | ForEach-Object { 'makensis: ' + $_ }
 $exe = "$tmp\test\nsis\parse-test.exe"
 if (-not (Test-Path $exe)) { 'COMPILE FAILED'; exit 1 }
