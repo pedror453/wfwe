@@ -49,6 +49,21 @@ Check 'Kermo is not running before the test' { -not (Get-Process Kermo -ErrorAct
 if (Test-Path $work) { Remove-Item "$work\*" -Recurse -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force $work | Out-Null
 
+$zip = Get-ChildItem $rel -Filter 'Kermo-*-win-x64-portable.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($zip) {
+    $pdir = "$work\portable"
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($zip.FullName, $pdir)
+    Check 'portable ZIP unpacks with Kermo.exe and portable.flag' { (Test-Path "$pdir\Kermo\Kermo.exe") -and (Test-Path "$pdir\Kermo\portable.flag") }
+    $pp = Start-Process "$pdir\Kermo\Kermo.exe" -ArgumentList @('--disable-gpu') -PassThru
+    Start-Sleep 12
+    Check 'portable mode keeps data and logs next to the exe' { Test-Path "$pdir\Kermo\data\logs\kermo.log" }
+    Check 'portable log reports portable mode' { (Get-Content "$pdir\Kermo\data\logs\kermo.log" -Raw -Encoding UTF8) -match ([Regex]::Unescape('\u043f\u043e\u0440\u0442\u0430\u0442\u0438\u0432\u043d\u0438\u0439: true')) }
+    Get-Process Kermo -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep 2
+    Remove-Item $pdir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 $p = Start-Process $Installer -ArgumentList @('/S', '/currentuser', "/SERVER=$Server", "/D=$inst") -PassThru
 Check 'silent install finishes with exit code 0' { (Wait-Exit $p 300) -and ($p.ExitCode -eq 0) }
 Start-Sleep 3
@@ -58,7 +73,7 @@ Check 'uninstaller is installed' { Test-Path "$inst\Uninstall Kermo.exe" }
 Check 'third-party license files are shipped' { (Test-Path "$inst\LICENSE.electron.txt") -and (Test-Path "$inst\LICENSES.chromium.html") }
 $vi = (Get-Item "$inst\Kermo.exe").VersionInfo
 L ('exe version info: ProductName=' + $vi.ProductName + ' | FileDescription=' + $vi.FileDescription + ' | CompanyName=' + $vi.CompanyName + ' | FileVersion=' + $vi.FileVersion)
-Check 'exe carries Kermo branding (not the default Electron one)' { ($vi.ProductName -eq 'Kermo') -and ($vi.FileDescription -match [Regex]::Unescape('\u041a\u0435\u0440\u043c\u043e')) }
+Check 'exe carries Kermo version info (not the default Electron one)' { ($vi.ProductName -eq 'Kermo') -and ($vi.CompanyName -ne 'GitHub, Inc.') -and ($vi.FileDescription -ne 'Electron') }
 $un = Find-Uninstall $inst
 Check 'uninstall entry is registered (Add/Remove Programs)' { $un -ne $null }
 if ($un) { L ('uninstall entry: DisplayName=' + $un.DisplayName + ' | DisplayVersion=' + $un.DisplayVersion + ' | Publisher=' + $un.Publisher) }

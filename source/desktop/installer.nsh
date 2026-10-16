@@ -8,6 +8,44 @@ Var kermoParams
 Var kermoServer
 Var kermoPd
 Var kermoFile
+Var kermoLen
+Var kermoIdx
+
+; Шукає в параметрах запуску "/SERVER=значення": значення — до пробілу або лапки; символ "/" в адресі допускається.
+Function KermoParseServer
+  StrCpy $kermoServer ""
+  StrLen $kermoLen $kermoParams
+  StrCpy $kermoIdx 0
+  kermoScan:
+    IntCmp $kermoIdx $kermoLen kermoScanDone 0 kermoScanDone
+    StrCpy $kermoTmp $kermoParams 8 $kermoIdx
+    StrCmp $kermoTmp "/SERVER=" kermoFound
+    IntOp $kermoIdx $kermoIdx + 1
+    Goto kermoScan
+  kermoFound:
+    IntOp $kermoIdx $kermoIdx + 8
+    StrCpy $kermoServer $kermoParams "" $kermoIdx
+    StrCpy $kermoTmp $kermoServer 1
+    StrCmp $kermoTmp '"' 0 kermoNoQuote
+      StrCpy $kermoServer $kermoServer "" 1
+    kermoNoQuote:
+    StrLen $kermoLen $kermoServer
+    StrCpy $kermoIdx 0
+  kermoCut:
+    IntCmp $kermoIdx $kermoLen kermoCutDone 0 kermoCutDone
+    StrCpy $kermoTmp $kermoServer 1 $kermoIdx
+    StrCmp $kermoTmp " " kermoCutDone
+    StrCmp $kermoTmp '"' kermoCutDone
+    IntOp $kermoIdx $kermoIdx + 1
+    Goto kermoCut
+  kermoCutDone:
+    StrCmp $kermoIdx 0 kermoEmpty
+    StrCpy $kermoServer $kermoServer $kermoIdx
+    Goto kermoScanDone
+  kermoEmpty:
+    StrCpy $kermoServer ""
+  kermoScanDone:
+FunctionEnd
 
 !macro customInit
   ; Electron 23+ не працює на Windows 7/8.x: потрібна Windows 10 (збірка 10240) або новіша.
@@ -26,7 +64,7 @@ Var kermoFile
   ; Тиха інсталяція: Kermo-Setup.exe /S /SERVER=http://адреса:8480 — адреса зберігається для всіх користувачів комп'ютера.
   ; У файл потрапляє лише текст адреси; програма сама перевіряє й нормалізує його (config.js).
   ${GetParameters} $kermoParams
-  ${GetOptions} $kermoParams "/SERVER=" $kermoServer
+  Call KermoParseServer
   ${If} $kermoServer != ""
     StrCpy $kermoTmp $kermoServer 4
     ${If} $kermoTmp == "http"
