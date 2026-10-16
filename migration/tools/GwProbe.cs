@@ -191,6 +191,36 @@ public static class GwProbe
         Console.WriteLine("structure lines: " + lines.Count);
     }
 
+    static List<object> AsList(object o)
+    {
+        var r = new List<object>();
+        Array a = o as Array;
+        if (a != null) { foreach (object x in a) r.Add(x); }
+        return r;
+    }
+
+    // Cluster administration API (read-only): sessions of the Copymax work copy; other infobases are only counted.
+    static void Sessions()
+    {
+        object conn = Activator.CreateInstance(Type.GetTypeFromProgID("V81.COMConnector"));
+        object agent = CM(conn, "ConnectAgent", "tcp://" + Srvr + ":1540");
+        Console.WriteLine("agent connected");
+        foreach (object cl in AsList(CM(agent, "GetClusters")))
+        {
+            Console.WriteLine("cluster: " + Try(() => GP(cl, "ClusterName")));
+            Console.WriteLine("authenticate: " + Try(() => CM(agent, "Authenticate", cl, "", "")));
+            int others = 0;
+            foreach (object s in AsList(CM(agent, "GetSessions", cl)))
+            {
+                string ibn = "?";
+                try { ibn = Convert.ToString(GP(GP(s, "InfoBase"), "Name")); } catch (Exception) { }
+                if (!string.Equals(ibn, Ref, StringComparison.OrdinalIgnoreCase)) { others++; continue; }
+                Console.WriteLine("Copymax session id=" + Try(() => GP(s, "SessionID")) + " user=" + Try(() => GP(s, "UserName")) + " app=" + Try(() => GP(s, "AppID")) + " started=" + Try(() => GP(s, "StartedAt")) + " lastActive=" + Try(() => GP(s, "LastActiveAt")) + " host=" + Try(() => GP(s, "Host")));
+            }
+            Console.WriteLine("sessions on other infobases: " + others);
+        }
+    }
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -206,7 +236,8 @@ public static class GwProbe
         string mode = args.Length > 0 ? args[0] : "facts";
         try
         {
-            if (mode == "compile") Compile();
+            if (mode == "sessions") Sessions();
+            else if (mode == "compile") Compile();
             else if (mode == "catlist") CatList();
             else if (mode == "catstruct") CatStruct(args.Length > 1 && args[1] != "default" ? args[1] : DefaultCats);
             else Facts();
