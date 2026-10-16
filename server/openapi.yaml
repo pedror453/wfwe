@@ -1,0 +1,264 @@
+openapi: 3.0.3
+info:
+  title: ERP AutoDealer Gateway API
+  version: 0.1.0
+  description: >-
+    Контракт між новим клієнтом і шлюзом інтеграції з 1С (чернетка).
+    Усі бізнес-операції (запис, проведення, друк) виконує 1С; шлюз не пише в таблиці СУБД.
+servers:
+  - url: https://gateway.local:8443/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      summary: Вхід користувачем 1С
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Токен сесії
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      summary: Завершити сесію (звільнити ліцензію 1С)
+      responses:
+        '204': { description: Сесію завершено }
+  /work-orders:
+    get:
+      summary: Список заказ-нарядів із пошуком
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: "Номер, клієнт або держномер" }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string, format: date } }
+        - { name: dateTo, in: query, schema: { type: string, format: date } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        '200':
+          description: Сторінка результатів
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrderPage' }
+    post:
+      summary: Створити заказ-наряд (чернетка, не проведений)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkOrderInput' }
+      responses:
+        '201':
+          description: Створено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /work-orders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Заказ-наряд за ідентифікатором
+      responses:
+        '200':
+          description: Документ
+          headers:
+            ETag: { schema: { type: string }, description: Мітка версії для оптимістичної перевірки }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+        '404': { $ref: '#/components/responses/Problem' }
+    put:
+      summary: Змінити заказ-наряд
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkOrderInput' }
+      responses:
+        '200':
+          description: Збережено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /work-orders/{id}/post:
+    post:
+      summary: Провести документ у 1С
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Проведено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /work-orders/{id}/unpost:
+    post:
+      summary: Скасувати проведення
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Проведення скасовано
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+  /work-orders/{id}/print/{template}:
+    get:
+      summary: Друкована форма
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: template, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: PDF
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+  /lookups/{kind}:
+    get:
+      summary: Довідник для вибору значення
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [organizations, customers, cars, employees, nomenclature, works, warehouses, repairTypes]
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 30, maximum: 200 } }
+      responses:
+        '200':
+          description: Елементи довідника
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Ref' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  responses:
+    Problem:
+      description: Помилка (RFC 7807); текст валідації 1С повертається у detail
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [user, password]
+      properties:
+        user: { type: string }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        expiresIn: { type: integer, description: Секунди до завершення неактивної сесії }
+        roles: { type: array, items: { type: string } }
+    Problem:
+      type: object
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string }
+    Ref:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    WorkOrderPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/WorkOrderSummary' } }
+        total: { type: integer }
+    WorkOrderSummary:
+      type: object
+      properties:
+        id: { type: string }
+        number: { type: string }
+        date: { type: string, format: date-time }
+        state: { type: string }
+        posted: { type: boolean }
+        customer: { $ref: '#/components/schemas/Ref' }
+        car: { $ref: '#/components/schemas/Ref' }
+        total: { type: number }
+    WorkOrderInput:
+      type: object
+      properties:
+        date: { type: string, format: date-time }
+        organization: { $ref: '#/components/schemas/Ref' }
+        customer: { $ref: '#/components/schemas/Ref' }
+        car: { $ref: '#/components/schemas/Ref' }
+        master: { $ref: '#/components/schemas/Ref' }
+        manager: { $ref: '#/components/schemas/Ref' }
+        repairType: { $ref: '#/components/schemas/Ref' }
+        reason: { type: string }
+        recommendations: { type: string }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        parts:
+          type: array
+          items: { $ref: '#/components/schemas/PartLine' }
+        works:
+          type: array
+          items: { $ref: '#/components/schemas/WorkLine' }
+        performers:
+          type: array
+          items: { $ref: '#/components/schemas/PerformerLine' }
+    WorkOrder:
+      allOf:
+        - { $ref: '#/components/schemas/WorkOrderInput' }
+        - type: object
+          properties:
+            id: { type: string }
+            number: { type: string }
+            state: { type: string }
+            posted: { type: boolean }
+            totalParts: { type: number }
+            totalWorks: { type: number }
+            total: { type: number }
+    PartLine:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Ref' }
+        quantity: { type: number }
+        unit: { $ref: '#/components/schemas/Ref' }
+        price: { type: number }
+        discountPercent: { type: number }
+        warehouse: { $ref: '#/components/schemas/Ref' }
+        amount: { type: number, readOnly: true }
+        vatAmount: { type: number, readOnly: true }
+    WorkLine:
+      type: object
+      properties:
+        work: { $ref: '#/components/schemas/Ref' }
+        lineKey: { type: string }
+        quantity: { type: number }
+        normHours: { $ref: '#/components/schemas/Ref' }
+        price: { type: number }
+        discountPercent: { type: number }
+        status: { type: string }
+        amount: { type: number, readOnly: true }
+    PerformerLine:
+      type: object
+      properties:
+        lineKey: { type: string }
+        employee: { $ref: '#/components/schemas/Ref' }
+        workshop: { $ref: '#/components/schemas/Ref' }
+        percent: { type: number }
